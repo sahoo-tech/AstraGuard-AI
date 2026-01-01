@@ -2,6 +2,12 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import time
+import sys
+import os
+
+# Add parent directory to path to import state_machine
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+from state_machine.mission_policy import PolicyManager
 
 # Initialize session state
 if "telemetry_active" not in st.session_state:
@@ -10,11 +16,28 @@ if "df" not in st.session_state:
     st.session_state.df = pd.DataFrame(columns=["voltage","temp","gyro","wheel"])
 if "logs" not in st.session_state:
     st.session_state.logs = []
+if "mission_phase" not in st.session_state:
+    st.session_state.mission_phase = "NOMINAL_OPS"
+
+# Load policy
+policy_manager = PolicyManager()
 
 # Sidebar controls
-st.sidebar.title("Controls")
+st.sidebar.title("Flight Controls")
 start_btn = st.sidebar.button("Start Telemetry")
 stop_btn = st.sidebar.button("Stop Telemetry")
+
+st.sidebar.markdown("---")
+st.sidebar.subheader("Mission Phase")
+phase_options = ["LAUNCH", "DEPLOYMENT", "NOMINAL_OPS", "SAFE_MODE"]
+st.session_state.mission_phase = st.sidebar.selectbox(
+    "Select Phase", 
+    phase_options, 
+    index=phase_options.index(st.session_state.mission_phase)
+)
+
+phase_config = policy_manager.get_phase_config(st.session_state.mission_phase)
+st.sidebar.info(f"**Current Phase Constraints:**\n\n{phase_config.get('description', 'No description')}")
 
 if start_btn:
     st.session_state.telemetry_active = True
@@ -23,7 +46,9 @@ if stop_btn:
 
 # Fake anomaly detection function
 def detect_anomaly(row):
-    return row["voltage"] > 4.2 or row["temp"] > 75
+    # Adjust thresholds based on phase
+    multiplier = policy_manager.get_threshold_multiplier(st.session_state.mission_phase)
+    return row["voltage"] > (4.2 * multiplier) or row["temp"] > (75 * multiplier)
 
 # Memory search simulation
 def memory_search(row):
@@ -41,8 +66,12 @@ def memory_search(row):
     return results
 
 # Header
-st.title("AstraGuard – Mission Control")
-st.caption("Real-time telemetry and anomaly detection")
+col_head1, col_head2 = st.columns([3, 1])
+with col_head1:
+    st.title("AstraGuard – Mission Control")
+    st.caption("Real-time telemetry and anomaly detection")
+with col_head2:
+    st.markdown(f"### 🚩 {st.session_state.mission_phase}")
 
 status = "Telemetry Active" if st.session_state.telemetry_active else "Telemetry Offline"
 st.write(f"**System Status:** {status}")
@@ -92,7 +121,7 @@ if st.session_state.telemetry_active:
     # Reasoning Console
     st.subheader("Reasoning Console")
     if anomaly:
-        reason = f"Voltage spike at {new_row['voltage']:.2f}V exceeds safe threshold. Last 3 events show similar patterns. Triggering recovery."
+        reason = f"Voltage spike at {new_row['voltage']:.2f}V exceeds safe threshold ({phase_config.get('threshold_multiplier', 1.0)}x multiplier active). Last 3 events show similar patterns."
         st.write(reason)
     else:
         st.write("No anomaly to reason over.")
@@ -100,9 +129,23 @@ if st.session_state.telemetry_active:
     # Response Actions
     st.subheader("Response & Recovery")
     if anomaly:
-        actions = ["Power Load Balancing","Thermal Regulation","Sensor Recalibration"]
-        for a in actions:
-            st.write(f"🟢 {a}: Running")
+        possible_actions = {
+            "POWER_LOAD_BALANCING": "Power Load Balancing",
+            "THERMAL_REGULATION": "Thermal Regulation",
+            "RESTART_SERVICE": "Service Restart"
+        }
+        
+        executed_any = False
+        for action_key, action_label in possible_actions.items():
+            if policy_manager.is_action_allowed(st.session_state.mission_phase, action_key):
+                st.write(f"🟢 {action_label}: Running")
+                executed_any = True
+            else:
+                st.write(f"🔴 {action_label}: BLOCKED by '{st.session_state.mission_phase}' Policy")
+        
+        if not executed_any:
+            st.warning("⚠️ All automated recoveries blocked by active mission policy.")
+            
     else:
         st.write("No active recovery actions.")
 
@@ -110,7 +153,7 @@ if st.session_state.telemetry_active:
     st.subheader("Event Log Stream")
     st.code("\n".join(st.session_state.logs[-10:]))
 
-    time.sleep(0.2)
+    time.sleep(0.5) # Slow down slightly to see changes
     st.rerun()
 else:
     st.info("Telemetry is offline. Start to view streams.")

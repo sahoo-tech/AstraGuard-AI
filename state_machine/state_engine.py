@@ -8,12 +8,23 @@ class SystemState(Enum):
     RECOVERY_IN_PROGRESS = "RECOVERY_IN_PROGRESS"
     SAFE_MODE = "SAFE_MODE"
 
+class MissionPhase(Enum):
+    LAUNCH = "LAUNCH"
+    DEPLOYMENT = "DEPLOYMENT"
+    NOMINAL_OPS = "NOMINAL_OPS"
+    SAFE_MODE = "SAFE_MODE"
+
 class StateMachine:
     def __init__(self):
         self.current_state = SystemState.NORMAL
+        self.current_phase = MissionPhase.NOMINAL_OPS
         self.recovery_start_time = None
         self.recovery_duration = 5  # seconds (simulated)
         self.recovery_steps = 0
+    
+    def set_phase(self, phase: MissionPhase):
+        """Update the mission phase."""
+        self.current_phase = phase
 
     def process_fault(self, fault_type: str, telemetry: Dict[str, Any]) -> Dict[str, str]:
         """Process a detected fault and transition state."""
