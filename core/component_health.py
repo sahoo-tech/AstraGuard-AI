@@ -267,12 +267,23 @@ class SystemHealthMonitor:
             # Allow reinitialization after reset
             self._initialized = False
             logger.info("Health monitor reset")
+        
+        # CRITICAL: Reset singleton instance to allow fresh creation
+        # This ensures new instances get properly initialized after reset
+        with self._init_lock:
+            SystemHealthMonitor._instance = None
+            # Also reset the module-level _health_monitor
+            global _health_monitor
+            _health_monitor = None
 
 
-# Global instance
-_health_monitor = SystemHealthMonitor()
+# Global instance - get via get_health_monitor()
+_health_monitor = None
 
 
 def get_health_monitor() -> SystemHealthMonitor:
-    """Get the global health monitor instance."""
+    """Get the global health monitor instance (singleton)."""
+    global _health_monitor
+    if _health_monitor is None:
+        _health_monitor = SystemHealthMonitor()
     return _health_monitor
