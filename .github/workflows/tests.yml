@@ -139,17 +139,24 @@ jobs:
     - name: Wait for Redis
       run: |
         python -c "
-        import redis, time, sys
+        import redis, time, sys, socket
         for i in range(30):
             try:
-                r = redis.Redis(host='localhost', port=6379, socket_connect_timeout=5)
-                r.ping()
-                print('Redis is ready!')
-                sys.exit(0)
-            except:
-                print(f'Waiting for Redis... ({i+1}/30)')
-                time.sleep(1)
-        print('Redis connection timeout')
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(2)
+                result = sock.connect_ex(('localhost', 6379))
+                sock.close()
+                if result == 0:
+                    r = redis.Redis(host='localhost', port=6379, socket_connect_timeout=5, decode_responses=True)
+                    pong = r.ping()
+                    if pong:
+                        print('Redis is ready!')
+                        sys.exit(0)
+            except Exception as e:
+                pass
+            print(f'Waiting for Redis... ({i+1}/30)', flush=True)
+            time.sleep(1)
+        print('ERROR: Redis connection timeout after 30 attempts')
         sys.exit(1)
         "
     
@@ -241,16 +248,26 @@ jobs:
     - name: Wait for Redis
       run: |
         python -c "
-        import redis, time, sys
+        import redis, time, sys, socket
         for i in range(30):
             try:
-                r = redis.Redis(host='localhost', port=6379, socket_connect_timeout=5)
-                r.ping()
-                print('Redis is ready!')
-                sys.exit(0)
-            except:
-                print(f'Waiting for Redis... ({i+1}/30)')
-                time.sleep(1)
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(2)
+                result = sock.connect_ex(('localhost', 6379))
+                sock.close()
+                if result == 0:
+                    r = redis.Redis(host='localhost', port=6379, socket_connect_timeout=5, decode_responses=True)
+                    pong = r.ping()
+                    if pong:
+                        print('Redis is ready!')
+                        sys.exit(0)
+            except Exception as e:
+                pass
+            print(f'Waiting for Redis... ({i+1}/30)', flush=True)
+            time.sleep(1)
+        print('ERROR: Redis connection timeout after 30 attempts')
+        sys.exit(1)
+        "
         print('Redis connection timeout')
         sys.exit(1)
         "
