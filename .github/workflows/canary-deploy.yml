@@ -180,8 +180,19 @@ jobs:
         echo "=== Done ==="
     
     - name: Run chaos test suite (3min)
+      continue-on-error: true
       run: |
-        timeout 180 python -m backend.chaos_engine || true
+        timeout 180 python -m backend.chaos_engine
+        CHAOS_EXIT=$?
+        echo "Chaos test exit code: $CHAOS_EXIT"
+        if [ $CHAOS_EXIT -eq 124 ]; then
+          echo "⚠️  Chaos test timed out (likely expected for extended scenarios)"
+        elif [ $CHAOS_EXIT -ne 0 ]; then
+          echo "⚠️  Chaos test encountered failures - check logs above"
+        else
+          echo "✅ Chaos test passed without errors"
+        fi
+        exit $CHAOS_EXIT
     
     - name: Validate P95 latency < 500ms
       run: |
