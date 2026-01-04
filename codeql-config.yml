@@ -5,7 +5,6 @@ paths-ignore:
   - docs
   - examples
   - htmlcov
-  - .github
   - assets
 
 queries:
