@@ -107,10 +107,12 @@ def log_feedback(fault_id: str, anomaly_type: str = "unknown") -> Callable[[F], 
                 _pending_store.append(event)
                 # Silent logging - don't spam console
 
-            except (IOError, json.JSONDecodeError, TypeError) as e:
-                # Capture exception but continue to feedback logging attempt
+            except Exception as e:
+                # Capture ANY exception but continue to feedback logging attempt
                 error_to_raise = e
-                logger.debug(f"Function {func.__name__} raised exception: {type(e).__name__}: {e}")
+                # Only log specific exception types to avoid noise
+                if isinstance(e, (IOError, json.JSONDecodeError, TypeError)):
+                    logger.debug(f"Function {func.__name__} raised exception: {type(e).__name__}: {e}")
 
                 # Try to log failure feedback even if function raised
                 try:
