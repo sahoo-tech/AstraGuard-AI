@@ -10,6 +10,8 @@ from core.error_handling import (
     ModelLoadError,
     AnomalyEngineError,
 )
+# Import input validation
+from core.input_validation import TelemetryData, ValidationError
 # Import timeout and resource monitoring
 from core.timeout_handler import async_timeout, get_timeout_config, TimeoutError as CustomTimeoutError
 from core.resource_monitor import get_resource_monitor
@@ -255,12 +257,15 @@ def detect_anomaly(data: Dict) -> Tuple[bool, float]:
         if not _MODEL_LOADED:
             load_model()
 
-        # Validate input
-        if not isinstance(data, dict):
+        # Validate input using TelemetryData
+        try:
+            validated_data = TelemetryData.validate(data)
+        except ValidationError as e:
+            logger.warning(f"Telemetry validation failed: {e}")
             raise AnomalyEngineError(
-                f"Invalid data type: expected dict, got {type(data).__name__}",
+                f"Invalid telemetry data: {e}",
                 component="anomaly_detector",
-                context={"data_type": str(type(data))},
+                context={"validation_error": str(e)},
             )
 
         # Use model-based detection if available

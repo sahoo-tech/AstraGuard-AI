@@ -1,8 +1,8 @@
-# TODO: Add Resource Monitoring to Health Monitor
+# Integration of Input Validation Module
 
 ## Tasks
-- [ ] Import resource_monitor in backend/health_monitor.py
-- [ ] Add resource monitor instance to HealthMonitor class
-- [ ] Add resource status to get_comprehensive_state method
-- [ ] Integrate resource checks into cascade_fallback logic
-- [ ] Update _get_cascade_reason to include resource exhaustion reasons
+- [ ] Integrate TelemetryData validation in anomaly_detector.py
+- [ ] Integrate PolicyDecision validation in policy_engine.py
+- [ ] Integrate MissionPhaseValidator and TelemetryData validation in state_engine.py
+- [ ] Test integration with malformed inputs
+- [ ] Update unit tests for validation scenarios
