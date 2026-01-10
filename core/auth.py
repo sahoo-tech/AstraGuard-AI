@@ -257,15 +257,27 @@ class AuthManager:
             f.write(encrypted_data)
 
     def _get_jwt_secret(self) -> str:
-        """Get JWT secret key from environment or generate one."""
-        secret = os.getenv("JWT_SECRET_KEY")
-        if secret and len(secret) >= JWT_SECRET_KEY_MIN_LENGTH:
-            return secret
+        """Get JWT secret key from secure secrets storage."""
+        try:
+            # Try to get from secrets manager first
+            secret = get_secret("jwt_secret_key")
+            if secret and len(secret) >= JWT_SECRET_KEY_MIN_LENGTH:
+                return secret
+        except KeyError:
+            # Secret not found, create one
+            pass
 
-        # Generate a secure random secret
-        if not secret:
-            secret = secrets.token_urlsafe(32)
-            self.logger.warning("JWT_SECRET_KEY not set, using generated secret. Set environment variable for production.")
+        # Generate and store a secure random secret
+        secret = secrets.token_urlsafe(32)
+        try:
+            store_secret(
+                "jwt_secret_key",
+                secret,
+                description="JWT signing secret key for authentication tokens"
+            )
+            self.logger.info("Generated and stored new JWT secret key")
+        except Exception as e:
+            self.logger.warning(f"Failed to store JWT secret in secrets manager: {e}. Using generated secret.")
 
         return secret
 
